@@ -7,8 +7,9 @@
    entre todos los empleados. Ver README.md.
    ========================================================= */
 window.ML_CONFIG = {
-  SUPABASE_URL: '',        // ej: 'https://xxxxxxxx.supabase.co'
-  SUPABASE_ANON_KEY: '',   // Project Settings → API → anon public
+  SUPABASE_URL: 'https://pcemjcohwcqrpgrocees.supabase.co',
+  // clave pública "anon" (es segura en el navegador; la protección real son las reglas RLS de schema.sql)
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjZW1qY29od2NxcnBncm9jZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NzgwMzEsImV4cCI6MjEwODI1NDAzMX0.6IgjfsbuiWDGj3TV99dgYL0c-UNeY-J1lpMno8_9Bsw',
 
   // Opcional: solo dejar registrarse con mails de la empresa.
   // ej: ['mundolococgi.com']  — vacío = cualquier mail.
