@@ -33,7 +33,7 @@
   /* =======================================================
      MODO DEMO
      ======================================================= */
-  const K = { users: 'mml_users', prods: 'mml_products', sess: 'mml_session', seeded: 'mml_seeded_v1' };
+  const K = { users: 'mml_users', prods: 'mml_products', sess: 'mml_session', seeded: 'mml_seeded_v2' };
 
   function seed() {
     if (LS.get(K.seeded)) return;
@@ -54,6 +54,7 @@
       P({ user_id: 'u-caro', vendedor_nombre: 'Caro Benítez', titulo: 'Cafetera Nespresso Essenza Mini', categoria: 'hogar', estado: 'como nuevo', precio: 75000, moneda: 'ARS', ml_url: ml('nespresso-essenza-mini'), ml_precio: 159000, created_at: ago(52) }),
       P({ user_id: 'u-nico', vendedor_nombre: 'Nico Ferreyra', titulo: 'Bicicleta rodado 29 talle M', categoria: 'deportes', estado: 'usado', precio: 320000, moneda: 'ARS', ml_url: '', ml_precio: null, descripcion: 'Frenos a disco, 21 cambios. Service hecho hace 3 meses.', created_at: ago(70) }),
       P({ user_id: 'u-martina', vendedor_nombre: 'Martina Sosa', titulo: "Libro The Animator's Survival Kit", categoria: 'libros', estado: 'usado', precio: 35000, moneda: 'ARS', ml_url: ml('animators-survival-kit'), ml_precio: 72000, descripcion: 'Edición en inglés, tapa blanda. Algunas notas en lápiz.', created_at: ago(90) }),
+      P({ user_id: 'u-caro', vendedor_nombre: 'Caro Benítez', titulo: 'Plantas de interior (3 potus)', categoria: 'hogar', estado: 'usado', precio: 0, moneda: 'ARS', ml_url: '', ml_precio: null, descripcion: 'Me mudo y no las puedo llevar. Las dejo en la cocina del estudio, avisame y son tuyas.', created_at: ago(5) }),
       P({ user_id: 'u-caro', vendedor_nombre: 'Caro Benítez', titulo: 'Teclado mecánico TKL switches red', categoria: 'gaming', estado: 'usado', precio: 38000, moneda: 'ARS', ml_url: ml('teclado-mecanico-tkl-red'), ml_precio: 64000, status: 'vendido', created_at: ago(120) })
     ];
     LS.set(K.users, users);

@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=1">
+<link rel="stylesheet" href="css/app.css?v=3">
 </head>
 <body>
 
@@ -54,19 +54,13 @@
   </div>
 </section>
 
-<div class="bar">
-  <div class="chips" id="chips" role="tablist" aria-label="Categorías"></div>
-  <div class="tools">
-    <label class="toggle"><input type="checkbox" id="hideSold" checked><span>Ocultar vendidos</span></label>
-    <label class="sort"><span class="sr">Ordenar</span>
-      <select id="sort" aria-label="Ordenar">
-        <option value="new">Más recientes</option>
-        <option value="save">Mayor ahorro</option>
-        <option value="low">Menor precio</option>
-        <option value="high">Mayor precio</option>
-      </select>
-    </label>
-  </div>
+<div class="bar" role="toolbar" aria-label="Filtros">
+  <label class="f-sel"><span id="catIco" class="f-ico"><i data-lucide="layout-grid"></i></span><select id="cat" aria-label="Categoría"></select><i data-lucide="chevron-down" class="chev"></i></label>
+  <button type="button" class="f-btn" id="fPrice" aria-pressed="false"><i data-lucide="arrow-up-down"></i><span>Precio</span></button>
+  <button type="button" class="f-btn f-free" id="fFree" aria-pressed="false"><i data-lucide="gift"></i><span>Gratis</span></button>
+  <button type="button" class="f-btn" id="fSave" aria-pressed="false"><i data-lucide="trending-down"></i><span>Más ahorro</span></button>
+  <button type="button" class="f-btn" id="fSold" aria-pressed="false"><i data-lucide="archive"></i><span>Ver vendidos</span></button>
+  <button type="button" class="f-clear" id="fClear" hidden><i data-lucide="x"></i> Limpiar</button>
 </div>
 
 <div class="mine-head" id="mineHead" hidden>
@@ -108,8 +102,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/lucide@0.441.0/dist/umd/lucide.min.js"></script>
-<script src="js/config.js?v=1"></script>
-<script src="js/data.js?v=1"></script>
-<script src="js/app.js?v=1"></script>
+<script src="js/config.js?v=3"></script>
+<script src="js/data.js?v=3"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>

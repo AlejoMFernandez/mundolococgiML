@@ -101,7 +101,7 @@ svg.lucide{width:18px;height:18px;flex:none}
 .toggle input{width:18px;height:18px;accent-color:var(--oceano)}
 .sort select{height:38px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0 30px 0 12px;font-size:14px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235D6B7E' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
 body.mine .bar,body.mine .hero{display:none}
-@media (min-width:861px){.chips{flex-wrap:wrap;-webkit-mask-image:none;mask-image:none;padding-right:2px;overflow:visible}}
+
 .mine-head{max-width:var(--max);margin:0 auto;padding:24px var(--pad) 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .mine-head h2{margin:0;font-family:var(--head);font-size:26px;letter-spacing:-.02em}
 .mine-head p{margin:4px 0 0;color:var(--mute)}
@@ -350,3 +350,32 @@ body.gated .grid,body.gated .bar,body.gated .hero-stats,body.gated .fab{visibili
   .grid{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ---------- filtros v2 ---------- */
+.bar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;padding-bottom:10px}
+.bar::-webkit-scrollbar{display:none}
+.f-sel,.f-btn,.f-clear{flex:none;display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;transition:background .2s,border-color .2s,color .2s}
+.f-sel svg,.f-btn svg{width:17px;height:17px;color:var(--oceano)}
+.f-btn:hover,.f-sel:hover{border-color:var(--oceano)}
+.f-sel{position:relative;padding:0 12px 0 14px;cursor:pointer}
+.f-sel select{appearance:none;border:0;background:none;font:inherit;font-weight:600;color:inherit;padding:0 22px 0 0;margin-right:-20px;height:100%;cursor:pointer;outline:0}
+.f-sel .chev{width:15px;height:15px;pointer-events:none;color:var(--mute)}
+.f-sel.on,.f-btn.on{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.f-sel.on svg,.f-btn.on svg{color:var(--cielo)}
+.f-sel.on select{color:#fff}
+.f-sel.on select option{color:var(--text)}
+.f-free.on{background:var(--ok);border-color:var(--ok)}
+.f-free.on svg{color:#fff}
+.f-clear{border-color:transparent;background:none;color:var(--oceano);padding:0 8px}
+.f-clear svg{width:16px;height:16px}
+.tag-free{background:var(--ok);color:#fff}
+.price.free b{color:var(--ok)}
+.wa-ico{display:inline-block;width:24px;height:24px;flex:none;background:currentColor;-webkit-mask:url(https://cdn.jsdelivr.net/npm/simple-icons@13.0.0/icons/whatsapp.svg) center/contain no-repeat;mask:url(https://cdn.jsdelivr.net/npm/simple-icons@13.0.0/icons/whatsapp.svg) center/contain no-repeat}
+.cur button{white-space:nowrap;padding:0 10px}
+.money-row.is-free .cur{flex:1}
+.money-row.is-free .cur button{flex:1}
+@media (max-width:860px){
+  .bar{margin:0;padding:14px var(--pad) 8px}
+  .f-sel,.f-btn{height:40px;font-size:13.5px;padding:0 13px}
+}
+.f-ico{display:inline-flex}

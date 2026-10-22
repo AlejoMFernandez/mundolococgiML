@@ -36,7 +36,7 @@ create table if not exists public.productos (
   descripcion text default '',
   categoria text not null default 'otros',
   estado text not null default 'usado' check (estado in ('nuevo','como nuevo','usado')),
-  precio numeric not null check (precio > 0),
+  precio numeric not null check (precio >= 0),  -- 0 = gratis
   moneda text not null default 'ARS' check (moneda in ('ARS','USD')),
   ml_url text,
   ml_precio numeric,
@@ -95,3 +95,7 @@ drop policy if exists "fotos: borrar propias" on storage.objects;
 create policy "fotos: borrar propias" on storage.objects
   for delete to authenticated
   using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Si ya habías corrido una versión anterior: habilitar precio 0 (gratis)
+alter table public.productos drop constraint if exists productos_precio_check;
+alter table public.productos add constraint productos_precio_check check (precio >= 0);

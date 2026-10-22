@@ -27,7 +27,7 @@
   const S = {
     user: null, profile: null, products: [],
     blue: null, // {venta, compra, fecha, src, stale}
-    q: '', cat: 'todo', sort: 'new', hideSold: true, mine: false
+    q: '', cat: 'todo', sort: 'new', onlyFree: false, showSold: false, mine: false
   };
 
   /* ---------------- utils ---------------- */
@@ -44,6 +44,9 @@
   const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
   const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
   const icons = () => { if (window.lucide) lucide.createIcons({ attrs: { 'stroke-width': 1.8 } }); };
+
+  const isFree = (p) => !(+p.precio > 0);
+  const waIcon = '<span class="wa-ico" aria-hidden="true"></span>';
 
   function savings(p) {
     if (!p.ml_precio) return null;
@@ -136,16 +139,39 @@
   document.addEventListener('click', () => { const m = $('#userMenu'); if (m) m.hidden = true; const p = $('#bluePop'); if (p && !p.hidden) { p.hidden = true; $('#blue').setAttribute('aria-expanded', 'false'); } });
 
   /* ---------------- catálogo ---------------- */
-  function renderChips() {
-    $('#chips').innerHTML = CATS.map((c) => `<button type="button" role="tab" class="chip ${S.cat === c.id ? 'on' : ''}" data-cat="${c.id}" aria-selected="${S.cat === c.id}"><i data-lucide="${c.icon}"></i>${c.label}</button>`).join('');
-    $$('#chips .chip').forEach((b) => (b.onclick = () => { S.cat = b.dataset.cat; renderChips(); renderGrid(); }));
+  function renderFilters() {
+    const sel = $('#cat');
+    sel.innerHTML = CATS.map((c) => `<option value="${c.id}">${c.id === 'todo' ? 'Todas las categorías' : c.label}</option>`).join('');
+    sel.value = S.cat;
+    sel.onchange = () => { S.cat = sel.value; paintFilters(); renderGrid(); };
+    $('#fPrice').onclick = () => { S.sort = S.sort === 'low' ? 'high' : S.sort === 'high' ? 'new' : 'low'; paintFilters(); renderGrid(); };
+    $('#fSave').onclick = () => { S.sort = S.sort === 'save' ? 'new' : 'save'; paintFilters(); renderGrid(); };
+    $('#fFree').onclick = () => { S.onlyFree = !S.onlyFree; paintFilters(); renderGrid(); };
+    $('#fSold').onclick = () => { S.showSold = !S.showSold; paintFilters(); renderGrid(); };
+    $('#fClear').onclick = () => { S.cat = 'todo'; S.sort = 'new'; S.onlyFree = false; S.showSold = false; S.q = ''; $('#q').value = ''; sel.value = 'todo'; paintFilters(); renderGrid(); };
+    paintFilters();
+  }
+  function paintFilters() {
+    const c = catOf(S.cat);
+    const ico = S.cat === 'todo' ? 'layout-grid' : c.icon;
+    if ($('#catIco').dataset.ico !== ico) { $('#catIco').dataset.ico = ico; $('#catIco').innerHTML = `<i data-lucide="${ico}"></i>`; }
+    $('.f-sel').classList.toggle('on', S.cat !== 'todo');
+    const fp = $('#fPrice');
+    fp.classList.toggle('on', S.sort === 'low' || S.sort === 'high');
+    fp.setAttribute('aria-pressed', S.sort === 'low' || S.sort === 'high');
+    fp.innerHTML = S.sort === 'low' ? '<i data-lucide="arrow-up-narrow-wide"></i><span>Menor precio</span>'
+      : S.sort === 'high' ? '<i data-lucide="arrow-down-wide-narrow"></i><span>Mayor precio</span>'
+      : '<i data-lucide="arrow-up-down"></i><span>Precio</span>';
+    [['#fSave', S.sort === 'save'], ['#fFree', S.onlyFree], ['#fSold', S.showSold]].forEach(([id, on]) => { $(id).classList.toggle('on', on); $(id).setAttribute('aria-pressed', on); });
+    $('#fClear').hidden = !(S.cat !== 'todo' || S.sort !== 'new' || S.onlyFree || S.showSold || S.q);
     icons();
   }
 
   function visible() {
     let list = S.products.slice();
     if (S.mine && S.user) list = list.filter((p) => p.user_id === S.user.id);
-    else if (S.hideSold) list = list.filter((p) => p.status !== 'vendido');
+    else if (!S.showSold) list = list.filter((p) => p.status !== 'vendido');
+    if (S.onlyFree) list = list.filter(isFree);
     if (S.cat !== 'todo') list = list.filter((p) => p.categoria === S.cat);
     if (S.q) {
       const q = S.q.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -164,6 +190,7 @@
   }
 
   function priceBlock(p, big) {
+    if (isFree(p)) return `<div class="price free ${big ? 'big' : ''}"><b>¡Gratis!</b><span class="alt">Se regala</span></div>`;
     const alt = p.moneda === 'USD' ? toARS(p.precio, 'USD') : toUSD(p.precio, 'ARS');
     const altTxt = alt == null ? '' : '≈ ' + (p.moneda === 'USD' ? fARS(alt) : fUSD(alt));
     return `<div class="price ${big ? 'big' : ''}"><b>${fmt(p.precio, p.moneda)}</b>${altTxt ? `<span class="alt">${altTxt}</span>` : ''}</div>`;
@@ -179,6 +206,7 @@
   function statusTag(p) {
     if (p.status === 'reservado') return '<span class="tag tag-res">Reservado</span>';
     if (p.status === 'vendido') return '<span class="tag tag-sold">Vendido</span>';
+    if (isFree(p)) return '<span class="tag tag-free">Gratis</span>';
     return '';
   }
 
@@ -194,10 +222,13 @@
       : '';
 
     if (!list.length) {
+      if (S.onlyFree && !S.mine && S.products.length) { g.innerHTML = `<div class="empty"><i data-lucide="gift"></i><h3>Nadie está regalando nada${S.cat !== 'todo' ? ' en esta categoría' : ''} (todavía)</h3><p>¿Tenés algo que ya no usás y querés que le sirva a alguien? Publicalo como gratis.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Regalar algo</a></div>`; icons(); paintFilters(); return; }
       g.innerHTML = S.mine
         ? `<div class="empty"><i data-lucide="package-open"></i><h3>Todavía no publicaste nada</h3><p>Sacale una foto a eso que ya no usás y en un minuto está online.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Publicar algo</a></div>`
+        : !S.products.length
+        ? `<div class="empty"><i data-lucide="sparkles"></i><h3>El Mercado está recién abierto</h3><p>Todavía no hay nada publicado. ¿Tenés algo que ya no usás? Sé el primero.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Publicar algo</a></div>`
         : `<div class="empty"><i data-lucide="search-x"></i><h3>No encontramos nada${S.q ? ` para “${esc(S.q)}”` : ''}</h3><p>Probá con otra palabra o categoría. ¿Lo tenés vos? Publicalo.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Publicar</a></div>`;
-      icons(); return;
+      icons(); paintFilters(); return;
     }
     g.innerHTML = list.map((p, i) => {
       const s = savings(p);
@@ -206,12 +237,12 @@
         <div class="card-body">
           <h3>${esc(p.titulo)}</h3>
           ${priceBlock(p)}
-          ${s && s.pct > 0 ? `<span class="save-chip"><i data-lucide="trending-down"></i> ${s.pct}% menos que nuevo</span>` : ''}
+          ${s && s.pct > 0 && !isFree(p) ? `<span class="save-chip"><i data-lucide="trending-down"></i> ${s.pct}% menos que nuevo</span>` : ''}
           <p class="seller"><span class="mini-av">${esc(initials(p.vendedor_nombre))}</span>${esc(firstName(p.vendedor_nombre))} · ${ago(p.created_at)}</p>
         </div>
       </a>`;
     }).join('');
-    icons();
+    icons(); paintFilters();
   }
 
   async function loadProducts() {
@@ -271,13 +302,13 @@
     let ml = '';
     if (p.ml_url || p.ml_precio) {
       const nuevo = p.ml_precio ? fmt(p.ml_precio, p.ml_moneda || 'ARS') : 'Ver precio';
-      const pct = s && s.pct > 0 ? ` · ahorrás ${s.pct}%` : '';
+      const pct = isFree(p) ? ' · te lo ahorrás todo' : s && s.pct > 0 ? ` · ahorrás ${s.pct}%` : '';
       ml = p.ml_url
         ? `<a class="ml-pill" href="${esc(p.ml_url)}" target="_blank" rel="noopener">Nuevo en Mercado Libre: ${nuevo}${pct} <i data-lucide="arrow-up-right"></i></a>`
         : `<span class="ml-pill">Nuevo: ${nuevo}${pct}</span>`;
     }
     const saveBox = s && s.pct > 0
-      ? `<div class="save-box"><i data-lucide="piggy-bank"></i><div><b>Te ahorrás ${fARS(s.diff)}</b><span>comprándoselo a ${esc(firstName(p.vendedor_nombre))} en vez de nuevo.</span></div></div>` : '';
+      ? `<div class="save-box"><i data-lucide="piggy-bank"></i><div><b>Te ahorrás ${fARS(s.diff)}</b><span>${isFree(p) ? `${esc(firstName(p.vendedor_nombre))} lo regala 🎁` : `comprándoselo a ${esc(firstName(p.vendedor_nombre))} en vez de nuevo.`}</span></div></div>` : '';
 
     let cta;
     if (own) {
@@ -289,12 +320,12 @@
         <button type="button" class="btn-text danger" id="delBtn"><i data-lucide="trash-2"></i> Eliminar publicación</button>
       </div>`;
     } else if (p.status === 'vendido') {
-      cta = `<button type="button" class="btn-wa" disabled>Ya se vendió</button>`;
+      cta = `<button type="button" class="btn-wa" disabled>${isFree(p) ? 'Ya se lo llevaron' : 'Ya se vendió'}</button>`;
     } else if (!S.user) {
-      cta = `<button type="button" class="btn-wa" id="waLogin"><i data-lucide="message-circle"></i> Me interesa por WhatsApp</button>
+      cta = `<button type="button" class="btn-wa" id="waLogin">${waIcon} Me interesa por WhatsApp</button>
              <p class="cta-note">Ingresá con tu cuenta del Mercado para ver el contacto de ${esc(firstName(p.vendedor_nombre))}. Es un toque.</p>`;
     } else {
-      cta = `<a class="btn-wa" id="waBtn" href="#" target="_blank" rel="noopener" aria-disabled="true"><i data-lucide="message-circle"></i> Me interesa por WhatsApp</a>
+      cta = `<a class="btn-wa" id="waBtn" href="#" target="_blank" rel="noopener" aria-disabled="true">${waIcon} Me interesa por WhatsApp</a>
              ${p.status === 'reservado' ? `<p class="cta-note">Está reservado: podés escribir igual por si se cae la venta.</p>` : ''}`;
     }
 
@@ -337,7 +368,11 @@
       if (!btn) return;
       if (contact && contact.whatsapp) {
         const me = firstName(S.profile && S.profile.nombre);
-        const msg = `¡Hola ${firstName(contact.nombre)}! ${me ? 'Soy ' + me + '. ' : ''}Vi en el Mercado Mundoloco tu publicación “${p.titulo}” a ${fmt(p.precio, p.moneda)}. ¿Sigue disponible?\n${location.href.split('#')[0]}#/p/${p.id}`;
+        const hola = `¡Hola ${firstName(contact.nombre)}! 👋${me ? ' Soy ' + me + '.' : ''}`;
+        const cuerpo = isFree(p)
+          ? `Me copa “${p.titulo}” que estás regalando en el Mercado, ¿todavía está? 🙌`
+          : `Me interesa “${p.titulo}” que subiste al Mercado, ¿todavía está?`;
+        const msg = `${hola} ${cuerpo}\n${location.href.split('#')[0]}#/p/${p.id}`;
         btn.href = waLink(contact.whatsapp, msg); btn.removeAttribute('aria-disabled');
       } else {
         btn.outerHTML = `<p class="cta-note">${esc(firstName(p.vendedor_nombre))} todavía no cargó su WhatsApp. Buscalo/a en la oficina 🙂</p>`;
@@ -495,8 +530,8 @@
         <section class="pf-sec">
           <h4>Precio</h4>
           <div class="money-row">
-            <div class="cur" id="curP">${['ARS', 'USD'].map((c) => `<button type="button" data-v="${c}" class="${d.moneda === c ? 'on' : ''}">${c === 'ARS' ? '$' : 'US$'}</button>`).join('')}</div>
-            ${moneyInput('precio', d.precio)}
+            <div class="cur" id="curP">${['ARS', 'USD', 'FREE'].map((c) => `<button type="button" data-v="${c}" class="${(p && isFree(p) ? 'FREE' : d.moneda) === c ? 'on' : ''}">${c === 'ARS' ? '$' : c === 'USD' ? 'US$' : '🎁 Gratis'}</button>`).join('')}</div>
+            ${moneyInput('precio', p && isFree(p) ? null : d.precio)}
           </div>
           <p class="hint" id="convP"></p>
         </section>
@@ -527,7 +562,7 @@
       </form>`, 'form', id);
 
     const f = $('#pf');
-    const val = { categoria: d.categoria, estado: d.estado, moneda: d.moneda || 'ARS', ml_moneda: d.ml_moneda || 'ARS' };
+    const val = { categoria: d.categoria, estado: d.estado, moneda: (p && isFree(p)) ? 'FREE' : (d.moneda || 'ARS'), ml_moneda: d.ml_moneda || 'ARS' };
     const pick = (sel, key, after) => $$(sel + ' button').forEach((b) => (b.onclick = () => { val[key] = b.dataset.v; $$(sel + ' button').forEach((x) => x.classList.toggle('on', x === b)); after && after(); }));
     pick('#pickCat', 'categoria'); pick('#pickEstado', 'estado'); pick('#curP', 'moneda', live); pick('#curML', 'ml_moneda', live);
 
@@ -541,15 +576,19 @@
     };
 
     function live() {
-      const pr = parse('precio'), mp = parse('ml_precio');
+      const free = val.moneda === 'FREE';
+      f.precio.hidden = free; f.precio.closest('.money-row').classList.toggle('is-free', free);
+      const pr = free ? 0 : parse('precio'), mp = parse('ml_precio');
       const cp = $('#convP');
+      if (free) cp.innerHTML = '🎁 Se publica como <b>regalo</b>. El que lo quiera te escribe por WhatsApp.';
+      else
       if (pr && rate()) cp.innerHTML = val.moneda === 'USD' ? `≈ ${fARS(pr * rate())} al blue de hoy (${fARS(rate())})` : `≈ ${fUSD(pr / rate())} al blue de hoy (${fARS(rate())})`;
       else cp.textContent = val.moneda === 'USD' ? 'Si publicás en dólares, el precio en pesos se actualiza solo con el blue.' : '';
       const sp = $('#savePrev');
-      if (pr && mp) {
-        const s = savings({ precio: pr, moneda: val.moneda, ml_precio: mp, ml_moneda: val.ml_moneda });
+      if ((pr || free) && mp) {
+        const s = savings({ precio: pr, moneda: free ? 'ARS' : val.moneda, ml_precio: mp, ml_moneda: val.ml_moneda });
         sp.hidden = !s;
-        if (s) sp.innerHTML = s.pct > 0
+        if (s) sp.innerHTML = free ? `<i data-lucide="gift"></i> El que se lo lleve se ahorra <b>${fARS(s.diff)}</b>. ¡Buena onda!` : s.pct > 0
           ? `<i data-lucide="sparkles"></i> Tu precio es <b>${s.pct}% menos</b> que nuevo: el comprador se ahorra <b>${fARS(s.diff)}</b>.`
           : `<i data-lucide="alert-triangle"></i> Tu precio está ${s.pct === 0 ? 'igual que' : 'por encima de'} nuevo. Quizás te conviene bajarlo.`;
         sp.className = 'save-prev ' + (s && s.pct > 0 ? 'good' : 'warn');
@@ -595,7 +634,8 @@
       const fail = (m, el) => { err.textContent = m; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
       if (titulo.length < 3) return fail('Ponele un título.', f.titulo);
       if (!val.categoria) return fail('Elegí una categoría.', $('#pickCat'));
-      if (!precio) return fail('Poné un precio.', f.precio);
+      const free = val.moneda === 'FREE';
+      if (!free && !precio) return fail('Poné un precio o elegí “Gratis”.', f.precio);
       if (mlUrl && !/mercadoli(b|v)re\.com|meli\.la/i.test(mlUrl)) return fail('El link tiene que ser de Mercado Libre.', f.ml_url);
 
       const btn = $('#pfBtn'); btn.disabled = true; btn.classList.add('loading');
@@ -608,7 +648,7 @@
         }
         btn.textContent = 'Guardando…';
         const row = {
-          titulo, categoria: val.categoria, estado: val.estado, precio, moneda: val.moneda,
+          titulo, categoria: val.categoria, estado: val.estado, precio: free ? 0 : precio, moneda: free ? 'ARS' : val.moneda,
           ml_url: mlUrl || null, ml_precio: mlp || null, ml_moneda: val.ml_moneda,
           descripcion: f.descripcion.value.trim(), fotos: urls,
           vendedor_nombre: (S.profile && S.profile.nombre) || S.user.email.split('@')[0]
@@ -616,7 +656,7 @@
         if (p) row.id = p.id; else row.user_id = S.user.id;
         const saved = await DB.saveProduct(row);
         await loadProducts();
-        toast(p ? 'Cambios guardados' : '¡Publicado! Ya lo ven todos en el estudio 🎉', 'ok');
+        toast(p ? 'Cambios guardados' : free ? '¡Publicado! Alguien se va a poner contento 🎁' : '¡Publicado! Ya lo ven todos en el estudio 🎉', 'ok');
         location.hash = '#/p/' + saved.id;
       } catch (ex) {
         err.textContent = ex.message;
@@ -668,11 +708,10 @@
     $('#blue').onclick = (e) => { e.stopPropagation(); const p = $('#bluePop'); p.hidden = !p.hidden; $('#blue').setAttribute('aria-expanded', !p.hidden); };
     $('#bluePop').onclick = (e) => e.stopPropagation();
     let qt; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { S.q = e.target.value.trim(); renderGrid(); }, 120); });
-    $('#sort').onchange = (e) => { S.sort = e.target.value; renderGrid(); };
-    $('#hideSold').onchange = (e) => { S.hideSold = e.target.checked; renderGrid(); };
+
     const m = $('#mirror'); setInterval(() => { m.classList.add('is-flipped'); setTimeout(() => m.classList.remove('is-flipped'), 1400); }, 7000);
 
-    renderChips();
+    renderFilters();
     renderGrid();
     DB.onAuth((u) => { if ((u && u.id) !== (S.user && S.user.id)) onAuthChange(u); });
     const user = await DB.init().catch(() => null);
