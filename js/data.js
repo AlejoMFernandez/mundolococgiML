@@ -33,7 +33,7 @@
   /* =======================================================
      MODO DEMO
      ======================================================= */
-  const K = { users: 'mml_users', prods: 'mml_products', sess: 'mml_session', seeded: 'mml_seeded_v2' };
+  const K = { users: 'mml_users', prods: 'mml_products', sess: 'mml_session', seeded: 'mml_seeded_v3' };
 
   function seed() {
     if (LS.get(K.seeded)) return;
@@ -52,8 +52,10 @@
       P({ user_id: 'u-martina', vendedor_nombre: 'Martina Sosa', titulo: 'iPad 9ª gen 64 GB + funda', categoria: 'tecnologia', estado: 'como nuevo', precio: 260, moneda: 'USD', ml_url: ml('ipad-9-generacion-64gb'), ml_precio: 749999, descripcion: 'Batería al 91%. Con funda tipo libro y cargador.', created_at: ago(30) }),
       P({ user_id: 'u-nico', vendedor_nombre: 'Nico Ferreyra', titulo: 'Auriculares Sony WH-1000XM4', categoria: 'audio', estado: 'usado', precio: 210000, moneda: 'ARS', ml_url: ml('sony-wh-1000xm4'), ml_precio: 520000, status: 'reservado', descripcion: 'Cancelación de ruido impecable, ideal para render nocturno.', created_at: ago(44) }),
       P({ user_id: 'u-caro', vendedor_nombre: 'Caro Benítez', titulo: 'Cafetera Nespresso Essenza Mini', categoria: 'hogar', estado: 'como nuevo', precio: 75000, moneda: 'ARS', ml_url: ml('nespresso-essenza-mini'), ml_precio: 159000, created_at: ago(52) }),
-      P({ user_id: 'u-nico', vendedor_nombre: 'Nico Ferreyra', titulo: 'Bicicleta rodado 29 talle M', categoria: 'deportes', estado: 'usado', precio: 320000, moneda: 'ARS', ml_url: '', ml_precio: null, descripcion: 'Frenos a disco, 21 cambios. Service hecho hace 3 meses.', created_at: ago(70) }),
+      P({ user_id: 'u-nico', vendedor_nombre: 'Nico Ferreyra', titulo: 'Bicicleta rodado 29 talle M', categoria: 'deportes', estado: 'usado', precio: 320000, moneda: 'ARS', ml_url: '', ml_precio: null, trueque: 'si', trueque_nota: 'Una tablet o un monitor', descripcion: 'Frenos a disco, 21 cambios. Service hecho hace 3 meses.', created_at: ago(70) }),
       P({ user_id: 'u-martina', vendedor_nombre: 'Martina Sosa', titulo: "Libro The Animator's Survival Kit", categoria: 'libros', estado: 'usado', precio: 35000, moneda: 'ARS', ml_url: ml('animators-survival-kit'), ml_precio: 72000, descripcion: 'Edición en inglés, tapa blanda. Algunas notas en lápiz.', created_at: ago(90) }),
+      P({ user_id: 'u-nico', vendedor_nombre: 'Nico Ferreyra', titulo: 'Sillas plegables para eventos', categoria: 'muebles', estado: 'usado', precio: 15000, moneda: 'ARS', cantidad: 6, ml_url: ml('silla-plegable'), ml_precio: 38000, descripcion: 'Sobraron del último evento del estudio. Precio por unidad.', created_at: ago(9) }),
+      P({ user_id: 'u-martina', vendedor_nombre: 'Martina Sosa', titulo: 'Consola retro con 2 joysticks', categoria: 'gaming', estado: 'como nuevo', precio: 0, moneda: 'ARS', trueque: 'solo', trueque_nota: 'Un teclado mecánico o auriculares', ml_url: '', ml_precio: null, created_at: ago(14) }),
       P({ user_id: 'u-caro', vendedor_nombre: 'Caro Benítez', titulo: 'Plantas de interior (3 potus)', categoria: 'hogar', estado: 'usado', precio: 0, moneda: 'ARS', ml_url: '', ml_precio: null, descripcion: 'Me mudo y no las puedo llevar. Las dejo en la cocina del estudio, avisame y son tuyas.', created_at: ago(5) }),
       P({ user_id: 'u-caro', vendedor_nombre: 'Caro Benítez', titulo: 'Teclado mecánico TKL switches red', categoria: 'gaming', estado: 'usado', precio: 38000, moneda: 'ARS', ml_url: ml('teclado-mecanico-tkl-red'), ml_precio: 64000, status: 'vendido', created_at: ago(120) })
     ];
@@ -98,6 +100,7 @@
       if (!LS.set(K.prods, ps)) throw new Error('El navegador se quedó sin espacio para fotos (modo demo). Probá con menos fotos.');
       return saved;
     },
+    async patch(id, data) { const ps = LS.get(K.prods, []); const p = ps.find((x) => x.id === id); if (p) { Object.assign(p, data); LS.set(K.prods, ps); } },
     async setStatus(id, status) { const ps = LS.get(K.prods, []); const p = ps.find((x) => x.id === id); if (p) { p.status = status; LS.set(K.prods, ps); } },
     async deleteProduct(id) { LS.set(K.prods, LS.get(K.prods, []).filter((x) => x.id !== id)); },
     async resetDemo() { [K.users, K.prods, K.sess, K.seeded].forEach(LS.del); }
@@ -170,6 +173,7 @@
         const { data, error } = await q; if (error) throw sbError(error); return data;
       },
       async setStatus(id, status) { const { error } = await sb.from('productos').update({ status }).eq('id', id); if (error) throw sbError(error); },
+      async patch(id, data) { const { error } = await sb.from('productos').update(data).eq('id', id); if (error) throw sbError(error); },
       async deleteProduct(id) { const { error } = await sb.from('productos').delete().eq('id', id); if (error) throw sbError(error); }
     };
   }

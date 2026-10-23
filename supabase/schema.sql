@@ -99,3 +99,8 @@ create policy "fotos: borrar propias" on storage.objects
 -- Si ya habías corrido una versión anterior: habilitar precio 0 (gratis)
 alter table public.productos drop constraint if exists productos_precio_check;
 alter table public.productos add constraint productos_precio_check check (precio >= 0);
+
+-- Unidades disponibles y trueque
+alter table public.productos add column if not exists cantidad int not null default 1 check (cantidad >= 0);
+alter table public.productos add column if not exists trueque text not null default 'no' check (trueque in ('no','si','solo'));
+alter table public.productos add column if not exists trueque_nota text not null default '';

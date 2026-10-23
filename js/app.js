@@ -27,7 +27,7 @@
   const S = {
     user: null, profile: null, products: [],
     blue: null, // {venta, compra, fecha, src, stale}
-    q: '', cat: 'todo', sort: 'new', onlyFree: false, showSold: false, mine: false
+    q: '', cat: 'todo', sort: 'new', onlyFree: false, onlySwap: false, showSold: false, mine: false
   };
 
   /* ---------------- utils ---------------- */
@@ -45,11 +45,14 @@
   const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
   const icons = () => { if (window.lucide) lucide.createIcons({ attrs: { 'stroke-width': 1.8 } }); };
 
-  const isFree = (p) => !(+p.precio > 0);
+  const swapOnly = (p) => p.trueque === 'solo';
+  const acceptsSwap = (p) => p.trueque === 'si' || p.trueque === 'solo';
+  const isFree = (p) => !(+p.precio > 0) && !swapOnly(p);
+  const qty = (p) => (p.cantidad == null ? 1 : +p.cantidad);
   const waIcon = '<span class="wa-ico" aria-hidden="true"></span>';
 
   function savings(p) {
-    if (!p.ml_precio) return null;
+    if (!p.ml_precio || swapOnly(p)) return null;
     const a = toARS(p.precio, p.moneda), b = toARS(p.ml_precio, p.ml_moneda || 'ARS');
     if (a == null || b == null || b <= 0) return null;
     const diff = b - a;
@@ -140,30 +143,67 @@
 
   /* ---------------- catálogo ---------------- */
   function renderFilters() {
-    const sel = $('#cat');
-    sel.innerHTML = CATS.map((c) => `<option value="${c.id}">${c.id === 'todo' ? 'Todas las categorías' : c.label}</option>`).join('');
-    sel.value = S.cat;
-    sel.onchange = () => { S.cat = sel.value; paintFilters(); renderGrid(); };
+    $('#catBtn').onclick = (e) => { e.stopPropagation(); $('#catLayer').hidden ? openCatMenu() : closeCatMenu(); };
+    $('#catLayer').addEventListener('click', (e) => { if (e.target.closest('[data-ddclose]')) closeCatMenu(); });
     $('#fPrice').onclick = () => { S.sort = S.sort === 'low' ? 'high' : S.sort === 'high' ? 'new' : 'low'; paintFilters(); renderGrid(); };
     $('#fSave').onclick = () => { S.sort = S.sort === 'save' ? 'new' : 'save'; paintFilters(); renderGrid(); };
     $('#fFree').onclick = () => { S.onlyFree = !S.onlyFree; paintFilters(); renderGrid(); };
+    $('#fSwap').onclick = () => { S.onlySwap = !S.onlySwap; paintFilters(); renderGrid(); };
     $('#fSold').onclick = () => { S.showSold = !S.showSold; paintFilters(); renderGrid(); };
-    $('#fClear').onclick = () => { S.cat = 'todo'; S.sort = 'new'; S.onlyFree = false; S.showSold = false; S.q = ''; $('#q').value = ''; sel.value = 'todo'; paintFilters(); renderGrid(); };
+    $('#fClear').onclick = () => { S.cat = 'todo'; S.sort = 'new'; S.onlyFree = false; S.onlySwap = false; S.showSold = false; S.q = ''; $('#q').value = ''; paintFilters(); renderGrid(); };
     paintFilters();
   }
+  function openCatMenu() {
+    const pool = S.products.filter((p) => p.status !== 'vendido');
+    const count = (id) => (id === 'todo' ? pool.length : pool.filter((p) => p.categoria === id).length);
+    const menu = $('#catMenu');
+    menu.innerHTML = `<p class="dd-title">Categorías</p>` + CATS.map((c) => {
+      const n = count(c.id), on = S.cat === c.id;
+      return `<button type="button" role="option" aria-selected="${on}" class="dd-opt ${on ? 'on' : ''} ${n ? '' : 'empty'}" data-cat="${c.id}">
+        <span class="dd-ico"><i data-lucide="${c.icon}"></i></span>
+        <span class="dd-lbl">${c.id === 'todo' ? 'Todas' : c.label}</span>
+        <span class="dd-n">${n}</span>
+        ${on ? '<i data-lucide="check" class="dd-check"></i>' : ''}
+      </button>`;
+    }).join('');
+    $$('.dd-opt', menu).forEach((b) => (b.onclick = () => { S.cat = b.dataset.cat; closeCatMenu(); paintFilters(); renderGrid(); }));
+    const layer = $('#catLayer'); layer.hidden = false;
+    if (matchMedia('(min-width:861px)').matches) {
+      const r = $('#catBtn').getBoundingClientRect();
+      menu.style.left = Math.max(12, Math.min(r.left, innerWidth - 300)) + 'px';
+      menu.style.top = (r.bottom + 8) + 'px';
+    } else { menu.style.left = ''; menu.style.top = ''; document.body.classList.add('locked'); }
+    $('#catBtn').setAttribute('aria-expanded', 'true');
+    icons();
+    const cur = $('.dd-opt.on', menu) || $('.dd-opt', menu); cur.focus({ preventScroll: true });
+  }
+  function closeCatMenu() {
+    const layer = $('#catLayer'); if (layer.hidden) return;
+    layer.hidden = true; $('#catBtn').setAttribute('aria-expanded', 'false');
+    if ($('#sheet').hidden && $('#dialog').hidden) document.body.classList.remove('locked');
+  }
+  window.addEventListener('resize', closeCatMenu);
+  window.addEventListener('scroll', () => { if (matchMedia('(min-width:861px)').matches) closeCatMenu(); }, { passive: true });
+  $('#catMenu').addEventListener('keydown', (e) => {
+    const opts = $$('.dd-opt', $('#catMenu')); const i = opts.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); opts[Math.min(opts.length - 1, i + 1)].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); opts[Math.max(0, i - 1)].focus(); }
+  });
+
   function paintFilters() {
     const c = catOf(S.cat);
     const ico = S.cat === 'todo' ? 'layout-grid' : c.icon;
     if ($('#catIco').dataset.ico !== ico) { $('#catIco').dataset.ico = ico; $('#catIco').innerHTML = `<i data-lucide="${ico}"></i>`; }
-    $('.f-sel').classList.toggle('on', S.cat !== 'todo');
+    $('#catBtn').classList.toggle('on', S.cat !== 'todo');
+    $('#catLabel').textContent = S.cat === 'todo' ? 'Todas las categorías' : c.label;
     const fp = $('#fPrice');
     fp.classList.toggle('on', S.sort === 'low' || S.sort === 'high');
     fp.setAttribute('aria-pressed', S.sort === 'low' || S.sort === 'high');
     fp.innerHTML = S.sort === 'low' ? '<i data-lucide="arrow-up-narrow-wide"></i><span>Menor precio</span>'
       : S.sort === 'high' ? '<i data-lucide="arrow-down-wide-narrow"></i><span>Mayor precio</span>'
       : '<i data-lucide="arrow-up-down"></i><span>Precio</span>';
-    [['#fSave', S.sort === 'save'], ['#fFree', S.onlyFree], ['#fSold', S.showSold]].forEach(([id, on]) => { $(id).classList.toggle('on', on); $(id).setAttribute('aria-pressed', on); });
-    $('#fClear').hidden = !(S.cat !== 'todo' || S.sort !== 'new' || S.onlyFree || S.showSold || S.q);
+    [['#fSave', S.sort === 'save'], ['#fFree', S.onlyFree], ['#fSwap', S.onlySwap], ['#fSold', S.showSold]].forEach(([id, on]) => { $(id).classList.toggle('on', on); $(id).setAttribute('aria-pressed', on); });
+    $('#fClear').hidden = !(S.cat !== 'todo' || S.sort !== 'new' || S.onlyFree || S.onlySwap || S.showSold || S.q);
     icons();
   }
 
@@ -172,6 +212,7 @@
     if (S.mine && S.user) list = list.filter((p) => p.user_id === S.user.id);
     else if (!S.showSold) list = list.filter((p) => p.status !== 'vendido');
     if (S.onlyFree) list = list.filter(isFree);
+    if (S.onlySwap) list = list.filter(acceptsSwap);
     if (S.cat !== 'todo') list = list.filter((p) => p.categoria === S.cat);
     if (S.q) {
       const q = S.q.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -191,9 +232,10 @@
 
   function priceBlock(p, big) {
     if (isFree(p)) return `<div class="price free ${big ? 'big' : ''}"><b>¡Gratis!</b><span class="alt">Se regala</span></div>`;
+    if (swapOnly(p)) return `<div class="price swap ${big ? 'big' : ''}"><b>Trueque</b><span class="alt">Se cambia por otra cosa</span></div>`;
     const alt = p.moneda === 'USD' ? toARS(p.precio, 'USD') : toUSD(p.precio, 'ARS');
     const altTxt = alt == null ? '' : '≈ ' + (p.moneda === 'USD' ? fARS(alt) : fUSD(alt));
-    return `<div class="price ${big ? 'big' : ''}"><b>${fmt(p.precio, p.moneda)}</b>${altTxt ? `<span class="alt">${altTxt}</span>` : ''}</div>`;
+    return `<div class="price ${big ? 'big' : ''}"><b>${fmt(p.precio, p.moneda)}${qty(p) > 1 ? '<small> c/u</small>' : ''}</b>${altTxt ? `<span class="alt">${altTxt}</span>` : ''}</div>`;
   }
 
   function thumb(p, cls) {
@@ -207,6 +249,7 @@
     if (p.status === 'reservado') return '<span class="tag tag-res">Reservado</span>';
     if (p.status === 'vendido') return '<span class="tag tag-sold">Vendido</span>';
     if (isFree(p)) return '<span class="tag tag-free">Gratis</span>';
+    if (swapOnly(p)) return '<span class="tag tag-swap">Trueque</span>';
     return '';
   }
 
@@ -222,6 +265,7 @@
       : '';
 
     if (!list.length) {
+      if (S.onlySwap && !S.onlyFree && !S.mine && S.products.length) { g.innerHTML = `<div class="empty"><i data-lucide="repeat"></i><h3>Nadie ofrece trueque${S.cat !== 'todo' ? ' en esta categoría' : ''} (todavía)</h3><p>¿Querés cambiar algo por otra cosa? Publicalo y marcá “Acepto trueque”.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Publicar</a></div>`; icons(); paintFilters(); return; }
       if (S.onlyFree && !S.mine && S.products.length) { g.innerHTML = `<div class="empty"><i data-lucide="gift"></i><h3>Nadie está regalando nada${S.cat !== 'todo' ? ' en esta categoría' : ''} (todavía)</h3><p>¿Tenés algo que ya no usás y querés que le sirva a alguien? Publicalo como gratis.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Regalar algo</a></div>`; icons(); paintFilters(); return; }
       g.innerHTML = S.mine
         ? `<div class="empty"><i data-lucide="package-open"></i><h3>Todavía no publicaste nada</h3><p>Sacale una foto a eso que ya no usás y en un minuto está online.</p><a href="#/publicar" class="btn-primary"><i data-lucide="plus"></i> Publicar algo</a></div>`
@@ -233,11 +277,12 @@
     g.innerHTML = list.map((p, i) => {
       const s = savings(p);
       return `<a class="card ${p.status !== 'disponible' ? 'is-' + p.status : ''}" href="#/p/${esc(p.id)}" style="--i:${Math.min(i, 12)}">
-        <div class="card-img">${thumb(p)}${statusTag(p)}<span class="cond">${esc(cap(p.estado))}</span></div>
+        <div class="card-img">${thumb(p)}${statusTag(p)}<span class="cond">${esc(cap(p.estado))}</span>${qty(p) > 1 ? `<span class="qty">x${qty(p)}</span>` : ''}</div>
         <div class="card-body">
           <h3>${esc(p.titulo)}</h3>
           ${priceBlock(p)}
           ${s && s.pct > 0 && !isFree(p) ? `<span class="save-chip"><i data-lucide="trending-down"></i> ${s.pct}% menos que nuevo</span>` : ''}
+          ${p.trueque === 'si' ? `<span class="swap-chip"><i data-lucide="repeat"></i> Acepta trueque</span>` : ''}
           <p class="seller"><span class="mini-av">${esc(initials(p.vendedor_nombre))}</span>${esc(firstName(p.vendedor_nombre))} · ${ago(p.created_at)}</p>
         </div>
       </a>`;
@@ -281,6 +326,7 @@
   $('#dialog').addEventListener('click', (e) => { if (e.target.closest('[data-dclose]')) { closeDialog(); if (location.hash === '#/perfil') goHome(); } });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (!$('#catLayer').hidden) { closeCatMenu(); $('#catBtn').focus(); return; }
     if (!$('#dialog').hidden) { closeDialog(); if (location.hash === '#/perfil') goHome(); }
     else if (!$('#sheet').hidden) goHome();
   });
@@ -310,10 +356,15 @@
     const saveBox = s && s.pct > 0
       ? `<div class="save-box"><i data-lucide="piggy-bank"></i><div><b>Te ahorrás ${fARS(s.diff)}</b><span>${isFree(p) ? `${esc(firstName(p.vendedor_nombre))} lo regala 🎁` : `comprándoselo a ${esc(firstName(p.vendedor_nombre))} en vez de nuevo.`}</span></div></div>` : '';
 
+    const swapBox = acceptsSwap(p)
+      ? `<div class="swap-box"><i data-lucide="repeat"></i><div><b>${swapOnly(p) ? 'Solo trueque' : 'También acepta trueque'}</b><span>${p.trueque_nota ? 'Le interesa: ' + esc(p.trueque_nota) : 'Ofrecele lo que tengas y lo charlan.'}</span></div></div>` : '';
+    const units = qty(p) > 1 && p.status !== 'vendido' ? `<span><i data-lucide="layers"></i> ${qty(p)} unidades disponibles</span>` : '';
+
     let cta;
     if (own) {
       cta = `<div class="owner">
         <a class="btn-primary" href="#/editar/${esc(p.id)}"><i data-lucide="pencil"></i> Editar</a>
+        ${p.status !== 'vendido' ? `<div class="stock"><span>Unidades disponibles</span><div class="stepper"><button type="button" id="qtyMinus" aria-label="Una menos"><i data-lucide="minus"></i></button><b id="qtyVal">${qty(p)}</b><button type="button" id="qtyPlus" aria-label="Una más"><i data-lucide="plus"></i></button></div></div>` : ''}
         <div class="seg seg-status" role="group" aria-label="Estado de la publicación">
           ${['disponible', 'reservado', 'vendido'].map((st) => `<button type="button" data-st="${st}" class="${p.status === st ? 'on' : ''}">${st[0].toUpperCase() + st.slice(1)}</button>`).join('')}
         </div>
@@ -325,7 +376,8 @@
       cta = `<button type="button" class="btn-wa" id="waLogin">${waIcon} Me interesa por WhatsApp</button>
              <p class="cta-note">Ingresá con tu cuenta del Mercado para ver el contacto de ${esc(firstName(p.vendedor_nombre))}. Es un toque.</p>`;
     } else {
-      cta = `<a class="btn-wa" id="waBtn" href="#" target="_blank" rel="noopener" aria-disabled="true">${waIcon} Me interesa por WhatsApp</a>
+      cta = `<a class="btn-wa" id="waBtn" href="#" target="_blank" rel="noopener" aria-disabled="true">${waIcon} ${swapOnly(p) ? 'Ofrecer trueque por WhatsApp' : 'Me interesa por WhatsApp'}</a>
+             ${p.trueque === 'si' ? `<a class="btn-swap" id="swapBtn" href="#" target="_blank" rel="noopener" aria-disabled="true"><i data-lucide="repeat"></i> Proponer un trueque</a>` : ''}
              ${p.status === 'reservado' ? `<p class="cta-note">Está reservado: podés escribir igual por si se cae la venta.</p>` : ''}`;
     }
 
@@ -334,11 +386,12 @@
       <div class="det">
         <div class="det-media">${gallery}${statusTag(p)}</div>
         <div class="det-info">
-          <p class="det-meta"><span><i data-lucide="${c.icon}"></i> ${c.label}</span><span class="cond-inline">${esc(cap(p.estado))}</span><span>${ago(p.created_at)}</span></p>
+          <p class="det-meta"><span><i data-lucide="${c.icon}"></i> ${c.label}</span><span class="cond-inline">${esc(cap(p.estado))}</span>${units}<span>${ago(p.created_at)}</span></p>
           <h2>${esc(p.titulo)}</h2>
           ${priceBlock(p, true)}
           ${ml}
           ${cta}
+          ${swapBox}
           ${saveBox}
           ${p.descripcion ? `<div class="desc"><h4>Descripción</h4><p>${esc(p.descripcion).replace(/\n/g, '<br>')}</p></div>` : ''}
           <div class="seller-card">
@@ -369,12 +422,17 @@
       if (contact && contact.whatsapp) {
         const me = firstName(S.profile && S.profile.nombre);
         const hola = `¡Hola ${firstName(contact.nombre)}! 👋${me ? ' Soy ' + me + '.' : ''}`;
+        const link = `${location.href.split('#')[0]}#/p/${p.id}`;
         const cuerpo = isFree(p)
           ? `Me copa “${p.titulo}” que estás regalando en el Mercado, ¿todavía está? 🙌`
+          : swapOnly(p)
+          ? `Vi que ofrecés “${p.titulo}” para trueque en el Mercado. ¿Qué buscás a cambio? Yo te puedo ofrecer: `
           : `Me interesa “${p.titulo}” que subiste al Mercado, ¿todavía está?`;
-        const msg = `${hola} ${cuerpo}\n${location.href.split('#')[0]}#/p/${p.id}`;
-        btn.href = waLink(contact.whatsapp, msg); btn.removeAttribute('aria-disabled');
+        btn.href = waLink(contact.whatsapp, `${hola} ${cuerpo}\n${link}`); btn.removeAttribute('aria-disabled');
+        const sb = $('#swapBtn');
+        if (sb) { sb.href = waLink(contact.whatsapp, `${hola} Me interesa “${p.titulo}” que subiste al Mercado. ¿Te copa un trueque? Te puedo ofrecer: \n${link}`); sb.removeAttribute('aria-disabled'); }
       } else {
+        if ($('#swapBtn')) $('#swapBtn').remove();
         btn.outerHTML = `<p class="cta-note">${esc(firstName(p.vendedor_nombre))} todavía no cargó su WhatsApp. Buscalo/a en la oficina 🙂</p>`;
       }
     }
@@ -383,6 +441,15 @@
         try { await DB.setStatus(p.id, b.dataset.st); p.status = b.dataset.st; toast(b.dataset.st === 'vendido' ? '¡Felicitaciones por la venta!' : 'Estado actualizado', 'ok'); renderGrid(); openDetail(id); }
         catch (e) { toast(e.message, 'err'); }
       }));
+      const setQty = async (n) => {
+        if (n < 1) {
+          return confirmDialog('¿Se fue la última?', 'La publicación queda marcada como vendida.', 'Marcar vendida', async () => {
+            try { await DB.patch(p.id, { cantidad: 0, status: 'vendido' }); p.cantidad = 0; p.status = 'vendido'; toast('¡Felicitaciones, se vendió todo!', 'ok'); renderGrid(); openDetail(id); } catch (e) { toast(e.message, 'err'); }
+          });
+        }
+        try { await DB.patch(p.id, { cantidad: n }); p.cantidad = n; $('#qtyVal').textContent = n; renderGrid(); toast(n === 1 ? 'Queda 1 unidad' : `Quedan ${n} unidades`); } catch (e) { toast(e.message, 'err'); }
+      };
+      if ($('#qtyMinus')) { $('#qtyMinus').onclick = () => setQty(qty(p) - 1); $('#qtyPlus').onclick = () => setQty(Math.min(99, qty(p) + 1)); }
       $('#delBtn').onclick = () => confirmDialog('¿Eliminar esta publicación?', 'No se puede deshacer. Si ya la vendiste, mejor marcala como vendida.', 'Eliminar', async () => {
         try { await DB.deleteProduct(p.id); S.products = S.products.filter((x) => x.id !== p.id); toast('Publicación eliminada'); goHome(); renderGrid(); }
         catch (e) { toast(e.message, 'err'); }
@@ -522,6 +589,9 @@
           <div class="fld"><span>Categoría</span>
             <div class="pick" id="pickCat">${CATS.slice(1).map((c) => `<button type="button" data-v="${c.id}" class="${d.categoria === c.id ? 'on' : ''}"><i data-lucide="${c.icon}"></i>${c.label}</button>`).join('')}</div>
           </div>
+          <div class="fld fld-row"><span>Unidades disponibles <em>Si tenés varias iguales</em></span>
+            <div class="stepper big"><button type="button" id="fQtyMinus" aria-label="Una menos"><i data-lucide="minus"></i></button><input name="cantidad" inputmode="numeric" value="${Math.max(1, qty(d))}" aria-label="Unidades"><button type="button" id="fQtyPlus" aria-label="Una más"><i data-lucide="plus"></i></button></div>
+          </div>
           <div class="fld"><span>Estado</span>
             <div class="seg" id="pickEstado">${ESTADOS.map((e) => `<button type="button" data-v="${e}" class="${d.estado === e ? 'on' : ''}">${e[0].toUpperCase() + e.slice(1)}</button>`).join('')}</div>
           </div>
@@ -534,6 +604,10 @@
             ${moneyInput('precio', p && isFree(p) ? null : d.precio)}
           </div>
           <p class="hint" id="convP"></p>
+          <div class="fld swap-fld" id="swapFld"><span>¿Aceptás trueque?</span>
+            <div class="seg" id="pickSwap">${[['no', 'No'], ['si', 'También'], ['solo', 'Solo trueque']].map(([v, l]) => `<button type="button" data-v="${v}" class="${(d.trueque || 'no') === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+            <label class="fld swap-note" id="swapNote"><span>¿Qué te interesaría a cambio? <em>Opcional</em></span><input name="trueque_nota" maxlength="120" value="${esc(d.trueque_nota || '')}" placeholder="Ej: un monitor, auriculares, lo que tengas…"></label>
+          </div>
         </section>
 
         <section class="pf-sec ml-sec">
@@ -562,9 +636,15 @@
       </form>`, 'form', id);
 
     const f = $('#pf');
-    const val = { categoria: d.categoria, estado: d.estado, moneda: (p && isFree(p)) ? 'FREE' : (d.moneda || 'ARS'), ml_moneda: d.ml_moneda || 'ARS' };
+    const val = { categoria: d.categoria, estado: d.estado, moneda: (p && isFree(p)) ? 'FREE' : (d.moneda || 'ARS'), ml_moneda: d.ml_moneda || 'ARS', trueque: d.trueque || 'no' };
     const pick = (sel, key, after) => $$(sel + ' button').forEach((b) => (b.onclick = () => { val[key] = b.dataset.v; $$(sel + ' button').forEach((x) => x.classList.toggle('on', x === b)); after && after(); }));
-    pick('#pickCat', 'categoria'); pick('#pickEstado', 'estado'); pick('#curP', 'moneda', live); pick('#curML', 'ml_moneda', live);
+    pick('#pickCat', 'categoria'); pick('#pickEstado', 'estado'); pick('#curP', 'moneda', live); pick('#curML', 'ml_moneda', live); pick('#pickSwap', 'trueque', live);
+    const qIn = f.cantidad;
+    const clampQ = (n) => Math.max(1, Math.min(99, n || 1));
+    qIn.addEventListener('input', () => { qIn.value = digits(qIn.value).slice(0, 2); });
+    qIn.addEventListener('blur', () => { qIn.value = clampQ(+qIn.value); });
+    $('#fQtyMinus').onclick = () => { qIn.value = clampQ(+qIn.value - 1); };
+    $('#fQtyPlus').onclick = () => { qIn.value = clampQ(+qIn.value + 1); };
 
     const parse = (n) => { const v = digits(f[n].value); return v ? +v : null; };
     $$('.money', f).forEach((i) => i.addEventListener('input', () => { const v = digits(i.value); i.value = v ? num(+v) : ''; live(); }));
@@ -577,7 +657,12 @@
 
     function live() {
       const free = val.moneda === 'FREE';
+      const solo = !free && val.trueque === 'solo';
+      $('#swapFld').hidden = free;
+      $('#swapNote').hidden = free || val.trueque === 'no';
+      f.precio.closest('.money-row').hidden = solo;
       f.precio.hidden = free; f.precio.closest('.money-row').classList.toggle('is-free', free);
+      if (solo) { $('#convP').innerHTML = '🔄 Se publica <b>sin precio</b>, solo para trueque.'; $('#savePrev').hidden = true; return; }
       const pr = free ? 0 : parse('precio'), mp = parse('ml_precio');
       const cp = $('#convP');
       if (free) cp.innerHTML = '🎁 Se publica como <b>regalo</b>. El que lo quiera te escribe por WhatsApp.';
@@ -635,7 +720,9 @@
       if (titulo.length < 3) return fail('Ponele un título.', f.titulo);
       if (!val.categoria) return fail('Elegí una categoría.', $('#pickCat'));
       const free = val.moneda === 'FREE';
-      if (!free && !precio) return fail('Poné un precio o elegí “Gratis”.', f.precio);
+      const trueque = free ? 'no' : val.trueque;
+      const solo = trueque === 'solo';
+      if (!free && !solo && !precio) return fail('Poné un precio, o elegí “Gratis” o “Solo trueque”.', f.precio);
       if (mlUrl && !/mercadoli(b|v)re\.com|meli\.la/i.test(mlUrl)) return fail('El link tiene que ser de Mercado Libre.', f.ml_url);
 
       const btn = $('#pfBtn'); btn.disabled = true; btn.classList.add('loading');
@@ -648,7 +735,8 @@
         }
         btn.textContent = 'Guardando…';
         const row = {
-          titulo, categoria: val.categoria, estado: val.estado, precio: free ? 0 : precio, moneda: free ? 'ARS' : val.moneda,
+          titulo, categoria: val.categoria, estado: val.estado, precio: free || solo ? 0 : precio, moneda: free || solo ? 'ARS' : val.moneda,
+          cantidad: Math.max(1, Math.min(99, +digits(f.cantidad.value) || 1)), trueque, trueque_nota: trueque === 'no' ? '' : f.trueque_nota.value.trim(),
           ml_url: mlUrl || null, ml_precio: mlp || null, ml_moneda: val.ml_moneda,
           descripcion: f.descripcion.value.trim(), fotos: urls,
           vendedor_nombre: (S.profile && S.profile.nombre) || S.user.email.split('@')[0]
