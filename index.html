@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mercado Mundoloco · Compra y venta entre el equipo</title>
-<meta name="description" content="Mercado interno de Mundoloco CGI: comprá y vendé cosas entre compañeros, con precios al dólar blue del día y comparación contra Mercado Libre.">
+<meta name="description" content="Mercado interno de Mundoloco CGI: comprá, vendé, regalá o cambiá cosas entre compañeros, con precios al dólar blue del día y comparación contra Mercado Libre.">
 <meta name="theme-color" content="#0C2341">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="img/logo-globe.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=5">
+<link rel="stylesheet" href="css/app.css?v=6">
 </head>
 <body>
 
@@ -20,62 +20,42 @@
   <button type="button" id="resetDemo">Reiniciar demo</button>
 </div>
 
-<header class="top" id="top">
-  <div class="top-in">
-    <a href="#/" class="brand" aria-label="Mercado Mundoloco — inicio">
+<!-- barra fina: dólar blue -->
+<div class="topbar">
+  <div class="wrap topbar-in">
+    <button type="button" class="blue" id="blue" aria-expanded="false" aria-controls="bluePop">
+      <span class="blue-dot" aria-hidden="true"></span>
+      <span>Dólar blue <b id="blueVal">—</b></span>
+      <span class="blue-time" id="blueTime">cargando…</span>
+    </button>
+    <div class="blue-pop" id="bluePop" hidden></div>
+    <span class="topbar-r">Mercado interno · solo para el equipo de Mundoloco CGI</span>
+  </div>
+</div>
+
+<!-- header -->
+<header class="hdr" id="hdr">
+  <div class="wrap hdr-in">
+    <a href="#/" class="brand" data-home aria-label="Mercado Mundoloco — inicio">
       <img src="img/logo-white.svg" alt="Mundoloco CGI">
       <span class="brand-tag">Mercado</span>
     </a>
-
-    <button type="button" class="blue" id="blue" aria-describedby="bluePop" aria-expanded="false">
-      <span class="blue-dot" aria-hidden="true"></span>
-      <span>Dólar blue: <b id="blueVal">—</b></span>
-      <span class="blue-time" id="blueTime">cargando…</span>
-    </button>
-    <div class="blue-pop" id="bluePop" role="tooltip" hidden></div>
-
-    <div class="top-actions">
+    <form class="search" id="searchForm" role="search" autocomplete="off">
+      <input id="q" type="search" placeholder="Buscar en el Mercado…" aria-label="Buscar productos" enterkeyhint="search">
+      <button type="submit" aria-label="Buscar"><i data-lucide="search"></i></button>
+    </form>
+    <nav class="hdr-nav" aria-label="Cuenta">
+      <a href="#/mis" class="hdr-link"><i data-lucide="package"></i><span>Mis publicaciones</span></a>
       <a href="#/publicar" class="btn-pub"><i data-lucide="plus"></i><span>Publicar</span></a>
       <div id="userSlot" class="user-slot"></div>
-    </div>
+    </nav>
   </div>
 </header>
 
-<section class="hero">
-  <div class="hero-in">
-    <p class="kicker"><span class="dot"></span> Mercado interno · Mundoloco CGI</p>
-    <h1>Lo que ya no usás,<br>le sirve a tu <em class="mirror" id="mirror">compañero.</em></h1>
-    <p class="hero-sub">Comprá y vendé entre la gente del estudio. Precios en pesos y al dólar blue del día, y cuánto te ahorrás contra comprarlo nuevo.</p>
-    <label class="search">
-      <i data-lucide="search"></i>
-      <input id="q" type="search" placeholder="Buscá: monitor, silla, Wacom…" autocomplete="off" aria-label="Buscar productos">
-    </label>
-    <p class="hero-stats" id="stats"></p>
-  </div>
-</section>
-
-<div class="bar" role="toolbar" aria-label="Filtros">
-  <button type="button" class="f-sel" id="catBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="catMenu"><span id="catIco" class="f-ico"><i data-lucide="layout-grid"></i></span><span id="catLabel">Todas las categorías</span><i data-lucide="chevron-down" class="chev"></i></button>
-  <button type="button" class="f-btn" id="fPrice" aria-pressed="false"><i data-lucide="arrow-up-down"></i><span>Precio</span></button>
-  <button type="button" class="f-btn f-free" id="fFree" aria-pressed="false"><i data-lucide="gift"></i><span>Gratis</span></button>
-  <button type="button" class="f-btn f-swap" id="fSwap" aria-pressed="false"><i data-lucide="repeat"></i><span>Trueque</span></button>
-  <button type="button" class="f-btn" id="fSave" aria-pressed="false"><i data-lucide="trending-down"></i><span>Más ahorro</span></button>
-  <button type="button" class="f-btn" id="fSold" aria-pressed="false"><i data-lucide="archive"></i><span>Ver vendidos</span></button>
-  <button type="button" class="f-clear" id="fClear" hidden><i data-lucide="x"></i> Limpiar</button>
-</div>
-
-<div class="mine-head" id="mineHead" hidden>
-  <div>
-    <h2>Mis publicaciones</h2>
-    <p>Marcá como reservado o vendido cuando cierres la venta, así nadie te escribe de más.</p>
-  </div>
-  <a href="#/" class="link-back"><i data-lucide="arrow-left"></i> Ver todo</a>
-</div>
-
-<main class="grid" id="grid" aria-live="polite"></main>
+<main id="view" class="view" aria-live="polite"></main>
 
 <footer class="foot">
-  <div class="foot-in">
+  <div class="wrap foot-in">
     <img src="img/logo-white.svg" alt="Mundoloco CGI" class="foot-logo">
     <p>Mercado interno de uso exclusivo del equipo de Mundoloco CGI. Las operaciones se arreglan entre compañeros.</p>
     <p class="foot-row">
@@ -85,31 +65,34 @@
   </div>
 </footer>
 
-<a href="#/publicar" class="fab" aria-label="Publicar algo"><i data-lucide="plus"></i> Publicar</a>
+<!-- barra de pestañas (celu) -->
+<nav class="tabbar" id="tabbar" aria-label="Navegación">
+  <a href="#/" data-tab="home" data-home><i data-lucide="house"></i><span>Inicio</span></a>
+  <a href="#/explorar" data-tab="explore"><i data-lucide="search"></i><span>Explorar</span></a>
+  <a href="#/publicar" data-tab="pub" class="tab-pub"><span class="tab-plus"><i data-lucide="plus"></i></span><span>Publicar</span></a>
+  <a href="#/mis" data-tab="mine"><i data-lucide="package"></i><span>Mis publ.</span></a>
+  <button type="button" data-tab="me" id="tabMe"><i data-lucide="user-round"></i><span>Cuenta</span></button>
+</nav>
 
-<!-- capa 1: detalle / formulario -->
+<!-- paneles -->
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-bg" data-close></div>
   <div class="sheet-card" role="dialog" aria-modal="true" id="sheetCard"></div>
 </div>
-
-<!-- capa 2: login / perfil / confirmaciones -->
 <div class="dialog" id="dialog" hidden>
   <div class="sheet-bg" data-dclose></div>
   <div class="dialog-card" role="dialog" aria-modal="true" id="dialogCard"></div>
 </div>
-
-<div class="dd-layer" id="catLayer" hidden>
+<div class="dd-layer" id="ddLayer" hidden>
   <div class="dd-bg" data-ddclose></div>
-  <div class="dd-menu" id="catMenu" role="listbox" aria-label="Categorías"></div>
+  <div class="dd-menu" id="ddMenu" role="listbox"></div>
 </div>
-
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/lucide@0.441.0/dist/umd/lucide.min.js"></script>
-<script src="js/config.js?v=5"></script>
-<script src="js/data.js?v=5"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/config.js?v=6"></script>
+<script src="js/data.js?v=6"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>
